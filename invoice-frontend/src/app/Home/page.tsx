@@ -56,16 +56,7 @@ export default function Home() {
                 </Box>
 
                 {data ?
-                    <Box>
-                        {console.log(data.getHomeInvoices)}
-                        {/* {data.getHomeInvoices.map((someData: any) => {
-                            return (
-                                <Box key={someData.InvoiceID}>
-                                    <p>{someData.ClientName}</p>
-                                    <p>{someData.StatusName}</p>
-                                </Box>
-                            )
-                        })} */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px', mt: '50px' }}>
                         {data.getHomeInvoices.map((invoice: HomeInvoice) => {
                             return (
                                 <Box key={invoice.InvoiceID}>
