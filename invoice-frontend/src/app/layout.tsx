@@ -9,6 +9,7 @@ import Sidebar from "./components/Sidebar/Sidebar";
 
 import { ApolloProvider } from '@apollo/client';
 import client from './lib/apolloClient';
+import Providers from "./redux/providers";
 
 
 const geistSans = Geist({
@@ -32,10 +33,12 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Box sx={{ display: 'flex', backgroundColor: '#F8F8FB', minHeight: '100vh' }}>
           <AppRouterCacheProvider>
-            <ApolloProvider client={client}>
-              <Sidebar />
-              <Box sx={{ flexGrow: 1 }}>{children}</Box>
-            </ApolloProvider>
+            <Providers>
+              <ApolloProvider client={client}>
+                <Sidebar />
+                <Box sx={{ flexGrow: 1 }}>{children}</Box>
+              </ApolloProvider>
+            </Providers>
           </AppRouterCacheProvider>
         </Box>
       </body>

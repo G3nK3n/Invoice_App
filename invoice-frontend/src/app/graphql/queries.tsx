@@ -9,15 +9,3 @@ export const GET_ALL_INVOICES = gql`
         }
     }
 `;
-
-export const GET_HOME_INVOICE = gql`
-    query GetHomeInvoices {
-        getHomeInvoices {
-            InvoiceID
-            InvoicePaymentDue
-            ClientName
-            StatusName
-            InvoiceTotal
-        }
-    }
-`;

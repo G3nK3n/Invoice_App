@@ -23,7 +23,7 @@ interface HomeInvoice {
 }
 
 interface HomeInvoiceProps {
-    homeInvoice: HomeInvoice;  // ✅ Expect a single invoice, not an array
+    homeInvoice: HomeInvoice;
 }
 
 //This converts the date to this format: DD-MMM-YYYY. Ex: 18 Aug 2021
@@ -35,6 +35,38 @@ const formattedDate = (payementDueDate: Date) => {
     });
 
     return formattedDate;
+}
+
+const checkStatusBackgroundColor = (statusName: string) => {
+    let backgroundColor: string = "";
+
+    if (statusName === 'Paid') {
+        backgroundColor = 'rgba(51, 214, 159, 0.2)';
+    }
+    else if (statusName === 'Pending') {
+        backgroundColor = 'rgba(255, 143, 0, 0.2)';
+    }
+    else {
+        backgroundColor = 'rgba(55, 59, 83,0.2)';
+    }
+
+    return backgroundColor;
+}
+
+const checkStatusFontColor = (statusName: string) => {
+    let fontColor: string = "";
+
+    if (statusName === 'Paid') {
+        fontColor = '#33D69F'
+    }
+    else if (statusName === 'Pending') {
+        fontColor = '#FF8F00'
+    }
+    else {
+        fontColor = '#373B53'
+    }
+
+    return fontColor;
 }
 
 export default function Home({ homeInvoice }: HomeInvoiceProps) {
@@ -53,9 +85,9 @@ export default function Home({ homeInvoice }: HomeInvoiceProps) {
                 <b>{"\u00A3" + parseFloat(Number(homeInvoice.InvoiceTotal).toFixed(2))}</b>
             </Typography>
             <Box sx={{ textAlign: 'center' }}>
-                <Box sx={{ backgroundColor: 'rgba(51, 214, 159, 0.2)', backdropFilter: 'blur(10px)', display: 'inline-block', width: '106px', padding: '10px' }}>
-                    <Box sx={{ display: 'inline-block', backgroundColor: '#33D69F', borderRadius: '50%', width: '8px', height: '8px', marginRight: '12px' }} />
-                    <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: "#33D69F", fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
+                <Box sx={{ backgroundColor: checkStatusBackgroundColor(homeInvoice.StatusName), backdropFilter: 'blur(10px)', display: 'inline-block', width: '106px', padding: '10px' }}>
+                    <Box sx={{ display: 'inline-block', backgroundColor: checkStatusFontColor(homeInvoice.StatusName), borderRadius: '50%', width: '8px', height: '8px', marginRight: '12px' }} />
+                    <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: checkStatusFontColor(homeInvoice.StatusName), fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
                         <b>{homeInvoice.StatusName}</b>
                     </Typography>
                 </Box>

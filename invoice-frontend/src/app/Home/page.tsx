@@ -1,15 +1,18 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
 import Image from 'next/image'
 import { League_Spartan } from 'next/font/google';
 
 import { useQuery } from '@apollo/client';
-import { GET_HOME_INVOICE } from '../graphql/queries';
 
 import Nothing from './Nothing/Nothing';
 import Invoice from './Invoice/Invoice';
+
+import { useDispatch, useSelector } from "react-redux";
+import { fetchInvoices } from "../redux/invoiceSlice";
+import { RootState, AppDispatch } from "../redux/store";
 
 
 const leagueSpartan = League_Spartan({
@@ -30,7 +33,12 @@ interface HomeInvoice {
 
 export default function Home() {
 
-    const { data } = useQuery(GET_HOME_INVOICE)
+
+
+    const dispatch = useDispatch<AppDispatch>();
+    const { invoices, loading, error } = useSelector((state: RootState) => state.invoices);
+
+    useEffect(() => { dispatch(fetchInvoices()); }, [dispatch]);
 
     return (
         <Box sx={{ height: '100vh', overflowY: 'scroll' }}>
@@ -55,9 +63,9 @@ export default function Home() {
                     </Button>
                 </Box>
 
-                {data ?
+                {invoices ?
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px', mt: '50px' }}>
-                        {data.getHomeInvoices.map((invoice: HomeInvoice) => {
+                        {invoices.map((invoice: HomeInvoice) => {
                             return (
                                 <Box key={invoice.InvoiceID}>
                                     <Invoice homeInvoice={invoice} />
