@@ -4,15 +4,16 @@ import React from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
 import Image from 'next/image'
 import { League_Spartan } from 'next/font/google';
+import { NextFont } from 'next/dist/compiled/@next/font';
 
+import { useRouter, usePathname } from 'next/navigation';
 
 
 const leagueSpartan = League_Spartan({
     subsets: ['latin'],
     weight: ['100', '200', '400', '800'],
     display: 'swap',
-
-})
+});
 
 interface HomeInvoice {
     InvoiceID: number,
@@ -70,6 +71,10 @@ const checkStatusFontColor = (statusName: string) => {
 }
 
 export default function Home({ homeInvoice }: HomeInvoiceProps) {
+
+    const router = useRouter();
+
+
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: '140px 200px 200px 120px 104px 60px', alignItems: 'center', width: '850px', background: 'white', borderRadius: '10px', padding: '15px' }}>
             <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: "black", fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
@@ -93,7 +98,7 @@ export default function Home({ homeInvoice }: HomeInvoiceProps) {
                 </Box>
             </Box>
             <Box sx={{ display: 'inline-flex' }}>
-                <Box sx={{ display: 'inline-block', width: '10px', cursor: 'pointer', marginLeft: '40px' }}>
+                <Box onClick={() => router.push('/Home/InvoiceInfo')} sx={{ display: 'inline-block', width: '10px', cursor: 'pointer', marginLeft: '40px' }}>
                     <Image alt={'Arrow'} src={'/images/icon-arrow-right.svg'} width={4} height={8} />
                 </Box>
             </Box>
