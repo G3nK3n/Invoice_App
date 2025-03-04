@@ -5,14 +5,11 @@ import { Box, Button, Container, Typography } from '@mui/material';
 import Image from 'next/image'
 import { League_Spartan } from 'next/font/google';
 
-import { useQuery } from '@apollo/client';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import { useRouter, usePathname } from 'next/navigation';
-
-
-// import { useDispatch, useSelector } from "react-redux";
-// import { fetchInvoices } from "../redux/invoiceSlice";
-// import { RootState, AppDispatch } from "../redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import { getInvoiceById } from "../../redux/invoiceSlice";
+import { RootState, AppDispatch } from "../../redux/store";
 
 
 const leagueSpartan = League_Spartan({
@@ -25,6 +22,24 @@ const leagueSpartan = League_Spartan({
 export default function InvoiceInfo() {
 
     const router = useRouter();
+
+    const searchParams = useSearchParams();
+    const theInvoiceID = Number(searchParams.get('id'));
+
+    const dispatch = useDispatch<AppDispatch>();
+    const { selectedInvoice, error } = useSelector((state: RootState) => state.invoices);
+
+    useEffect(() => {
+        if (theInvoiceID) {
+            dispatch(getInvoiceById(theInvoiceID));
+        }
+
+        if (error) {
+            console.log("The error message is: ", error)
+        }
+    }, [theInvoiceID, dispatch])
+
+    console.log(selectedInvoice)
 
     return (
         <Box sx={{ height: '100vh', overflowY: 'scroll' }}>
@@ -56,11 +71,11 @@ export default function InvoiceInfo() {
                 <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '20px', mt: '50px' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '850px', background: 'white', borderRadius: '10px', padding: '15px' }}>
                         <Box sx={{ display: 'inline-block' }}>
-                            <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#888EB0", fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
+                            <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#888EB0", fontWeight: '400', display: 'inline-flex', alignItems: 'center', marginLeft: '15px' }}>
                                 Status
                             </Typography>
-                            <Box sx={{ display: 'inline-block' }}>
-                                <Box sx={{ backgroundColor: 'lightgreen', backdropFilter: 'blur(10px)', display: 'inline-block', width: '106px', padding: '10px' }}>
+                            <Box sx={{ display: 'inline-block', marginLeft: '25px', textAlign: 'center' }}>
+                                <Box sx={{ backgroundColor: 'lightgreen', backdropFilter: 'blur(10px)', display: 'inline-block', width: '106px', padding: '10px', borderRadius: '7px' }}>
                                     <Box sx={{ display: 'inline-block', backgroundColor: 'green', borderRadius: '50%', width: '8px', height: '8px', marginRight: '12px' }} />
                                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: 'green', fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
                                         <b>Test</b>
@@ -69,13 +84,13 @@ export default function InvoiceInfo() {
                             </Box>
                         </Box>
                         <Box sx={{ display: 'inline-block' }}>
-                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: 'rgb(126, 136, 195, 0.1)', color: '#7E88C3' }}>
+                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: 'rgb(126, 136, 195, 0.1)', color: '#7E88C3', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '75px', marginRight: '15px' }}>
                                 Edit
                             </Button>
-                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#EC5757', color: 'white' }}>
+                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#EC5757', color: 'white', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '95px', marginRight: '15px' }}>
                                 Delete
                             </Button>
-                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#7C5DFA', color: 'white' }} >
+                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#7C5DFA', color: 'white', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '145px', marginRight: '15px' }} >
                                 Mark as Paid
                             </Button>
                         </Box>

@@ -98,7 +98,7 @@ export default function Home({ homeInvoice }: HomeInvoiceProps) {
                 </Box>
             </Box>
             <Box sx={{ display: 'inline-flex' }}>
-                <Box onClick={() => router.push('/Home/InvoiceInfo')} sx={{ display: 'inline-block', width: '10px', cursor: 'pointer', marginLeft: '40px' }}>
+                <Box onClick={() => router.push(`/Home/InvoiceInfo?id=${homeInvoice.InvoiceID}`)} sx={{ display: 'inline-block', width: '10px', cursor: 'pointer', marginLeft: '40px' }}>
                     <Image alt={'Arrow'} src={'/images/icon-arrow-right.svg'} width={4} height={8} />
                 </Box>
             </Box>
