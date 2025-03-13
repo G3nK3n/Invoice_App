@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
 import Image from 'next/image'
 import { League_Spartan } from 'next/font/google';
@@ -11,6 +11,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { getInvoiceById } from "../../redux/invoiceSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 
+import InvoiceInfoDetails from './InvoiceInfoDetails/InvoiceInfoDetails';
+import EditModal from '../../components/Modals/EditModal';
 
 const leagueSpartan = League_Spartan({
     subsets: ['latin'],
@@ -19,16 +21,52 @@ const leagueSpartan = League_Spartan({
 
 })
 
+interface Items {
+    ItemID: number,
+    ItemName: string,
+    ItemPrice: number,
+    ItemQuantity: number,
+    ItemTotal: number
+}
+
+interface InvoiceDetail {
+    InvoiceID: number,
+    InvoiceDescription: string,
+    InvoiceCreateDate: Date,
+    InvoicePaymentDue: Date,
+    ClientName: string,
+    ClientAddress: string,
+    ClientCity: string,
+    ClientPostalCode: string,
+    ClientCountry: string,
+    ClientEmail: string,
+    BillsFromAddress: string,
+    BillsFromCity: string,
+    BillsFromPostalCode: string,
+    BillsFromCountry: string,
+    InvoiceTotal: number,
+    StatusName: string,
+    Items: Items[]
+}
+
 export default function InvoiceInfo() {
+
+
 
     const router = useRouter();
 
     const searchParams = useSearchParams();
+    //This gets the id value in the url
     const theInvoiceID = Number(searchParams.get('id'));
 
     const dispatch = useDispatch<AppDispatch>();
     const { selectedInvoice, error } = useSelector((state: RootState) => state.invoices);
 
+    const [invoiceDetail, setInvoiceDetail] = useState<InvoiceDetail | null>(selectedInvoice)
+    const [editInvoice, setEditInvoice] = useState<boolean>(false)
+
+
+    //This useEffect calls the dispatch with the provided ID to get the information of the Invoice
     useEffect(() => {
         if (theInvoiceID) {
             dispatch(getInvoiceById(theInvoiceID));
@@ -39,7 +77,14 @@ export default function InvoiceInfo() {
         }
     }, [theInvoiceID, dispatch])
 
-    console.log(selectedInvoice)
+    //This useEffect checks if the selectedInvoice exist after the dispatch, then set the state with the Invoice
+    useEffect(() => {
+        if (selectedInvoice) {
+            setInvoiceDetail(selectedInvoice)
+        }
+    }, [selectedInvoice])
+
+
 
     return (
         <Box sx={{ height: '100vh', overflowY: 'scroll' }}>
@@ -84,7 +129,7 @@ export default function InvoiceInfo() {
                             </Box>
                         </Box>
                         <Box sx={{ display: 'inline-block' }}>
-                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: 'rgb(126, 136, 195, 0.1)', color: '#7E88C3', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '75px', marginRight: '15px' }}>
+                            <Button onClick={() => setEditInvoice(!editInvoice)} sx={{ fontFamily: leagueSpartan.style.fontFamily, background: 'rgb(126, 136, 195, 0.1)', color: '#7E88C3', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '75px', marginRight: '15px' }}>
                                 Edit
                             </Button>
                             <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#EC5757', color: 'white', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '95px', marginRight: '15px' }}>
@@ -96,6 +141,12 @@ export default function InvoiceInfo() {
                         </Box>
                     </Box>
                 </Box>
+                <Box>
+                    <InvoiceInfoDetails theInvoiceDetail={invoiceDetail} />
+                </Box>
+                {
+                    editInvoice && <EditModal theInvoiceDetail={invoiceDetail} />
+                }
             </Container >
         </Box >
     );
