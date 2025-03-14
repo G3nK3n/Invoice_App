@@ -145,7 +145,7 @@ export default function InvoiceInfo() {
                     <InvoiceInfoDetails theInvoiceDetail={invoiceDetail} />
                 </Box>
                 {
-                    editInvoice && <EditModal theInvoiceDetail={invoiceDetail} />
+                    editInvoice && <EditModal theInvoiceDetail={invoiceDetail} onClose={() => setEditInvoice(!editInvoice)} />
                 }
             </Container >
         </Box >
