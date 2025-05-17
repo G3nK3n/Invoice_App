@@ -22,6 +22,7 @@ export const GET_SPECIFIC_INVOICE = gql`
             InvoiceDescription
             InvoiceCreateDate
             InvoicePaymentDue
+            InvoicePaymentTerms
             ClientName
             ClientAddress
             ClientCity

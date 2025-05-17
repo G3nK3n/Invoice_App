@@ -34,6 +34,7 @@ interface InvoiceDetail {
     InvoiceDescription: string,
     InvoiceCreateDate: Date,
     InvoicePaymentDue: Date,
+    InvoicePaymentTerms: number,
     ClientName: string,
     ClientAddress: string,
     ClientCity: string,

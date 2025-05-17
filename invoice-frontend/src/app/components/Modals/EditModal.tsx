@@ -1,7 +1,14 @@
 import React, { useEffect } from 'react';
 import { Box, Button, Container, TextField, Typography } from '@mui/material';
-import Image from 'next/image'
 import { League_Spartan } from 'next/font/google';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+
+import Image from 'next/image';
+
+
 
 const leagueSpartan = League_Spartan({
     subsets: ['latin'],
@@ -23,6 +30,7 @@ interface InvoiceDetail {
     InvoiceDescription: string,
     InvoiceCreateDate: Date,
     InvoicePaymentDue: Date,
+    InvoicePaymentTerms: number,
     ClientName: string,
     ClientAddress: string,
     ClientCity: string,
@@ -251,8 +259,160 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 }}
                             />
                         </Box>
+
                     </Box>
 
+                </Box>
+
+
+                {/* This is the Invoice and Project Description section */}
+                <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: '20px' }}>
+                        <Box>
+                            <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block' }}>Invoice Date</Typography>
+
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <DatePicker
+                                    label={false}
+                                    defaultValue={dayjs(theInvoiceDetail?.InvoiceCreateDate)}
+                                />
+                            </LocalizationProvider>
+                        </Box>
+
+                        <Box>
+                            <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block' }}>Payment Terms</Typography>
+                            <TextField
+                                defaultValue={theInvoiceDetail?.InvoicePaymentTerms}
+                                sx={{ mt: '5px', width: '290px' }}
+                                id="outlined-basic"
+                                label={false}
+                                variant="outlined"
+                                size='small'
+                                slotProps={{
+                                    input: {
+                                        style: {
+                                            fontWeight: 'bold'
+                                        }
+                                    }
+                                }}
+
+                            />
+                        </Box>
+                    </Box>
+
+                    <Box>
+                        <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block', mt: '20px' }}>Project Description</Typography>
+                        <TextField
+                            defaultValue={theInvoiceDetail?.InvoiceDescription}
+                            id="outlined-basic"
+                            label={false}
+                            variant="outlined"
+                            size='small'
+                            fullWidth
+                            slotProps={{
+                                input: {
+                                    style: {
+                                        fontWeight: 'bold'
+                                    }
+                                }
+                            }}
+                            sx={{ mt: '5px' }}
+                        />
+                    </Box>
+                </Box>
+
+                {/* This is the Item List section */}
+                <Box sx={{ marginTop: '35px' }}>
+                    <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: "#777F98", fontWeight: '400', display: 'block' }}><b>Item List</b></Typography>
+
+                    <Box sx={{ mt: '15px', mb: '10px' }}>
+                        <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'inline-block' }}>Item Name</Typography>
+                        <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'inline-block', ml: '235px' }}>Qty.</Typography>
+                        <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'inline-block', ml: '40px' }}>Price</Typography>
+                        <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'inline-block', ml: '90px' }}>Total</Typography>
+                    </Box>
+                    {theInvoiceDetail?.Items ?
+                        theInvoiceDetail.Items.map((item, index) => {
+                            return (
+                                <Box key={index}>
+                                    <TextField
+                                        defaultValue={item.ItemName}
+                                        sx={{ width: '276px', mt: '5px' }}
+                                        id="outlined-basic"
+                                        label={false}
+                                        variant="outlined"
+                                        size='small'
+                                        slotProps={{
+                                            input: {
+                                                style: {
+                                                    fontWeight: 'bold'
+                                                }
+                                            }
+                                        }}
+                                    />
+
+                                    <TextField
+                                        defaultValue={item.ItemQuantity}
+                                        sx={{ width: '46px', mt: '5px', ml: '20px' }}
+                                        id="outlined-basic"
+                                        label={false}
+                                        variant="outlined"
+                                        size='small'
+                                        slotProps={{
+                                            input: {
+                                                style: {
+                                                    fontWeight: 'bold'
+                                                }
+                                            }
+                                        }}
+                                    />
+
+                                    <TextField
+                                        defaultValue={item.ItemPrice}
+                                        sx={{ width: '100px', mt: '5px', ml: '20px' }}
+                                        id="outlined-basic"
+                                        label={false}
+                                        variant="outlined"
+                                        size='small'
+                                        slotProps={{
+                                            input: {
+                                                style: {
+                                                    fontWeight: 'bold'
+                                                }
+                                            }
+                                        }}
+                                    />
+
+                                    <TextField
+                                        defaultValue={item.ItemTotal}
+                                        sx={{ width: '80px', mt: '5px', ml: '20px' }}
+                                        id="outlined-basic"
+                                        label={false}
+                                        variant="outlined"
+                                        size='small'
+                                        disabled={true}
+                                        slotProps={{
+                                            input: {
+                                                style: {
+                                                    fontWeight: 'bold'
+                                                }
+                                            }
+                                        }}
+                                    />
+
+                                    <Box sx={{ display: 'inline-block', margin: '15px 0px 0px 20px', cursor: 'pointer' }}>
+                                        <Image alt="Arrow" src="/images/icon-delete.svg" width={12} height={16} />
+                                    </Box>
+                                </Box>
+                            )
+                        })
+                        :
+                        null
+                    }
+
+                    <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '13px', color: "#7E88C3", fontWeight: '400', display: 'block', width: '100%', mt: '10px' }}>
+                        <b>+ Add New Item</b>
+                    </Button>
                 </Box>
 
                 {/* This is the Buttons From section */}
