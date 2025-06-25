@@ -23,6 +23,7 @@ export const GET_SPECIFIC_INVOICE = gql`
             InvoiceCreateDate
             InvoicePaymentDue
             InvoicePaymentTerms
+            ClientID
             ClientName
             ClientAddress
             ClientCity
@@ -43,6 +44,18 @@ export const GET_SPECIFIC_INVOICE = gql`
                 ItemTotal
             }
         }
+    }
+`
+
+export const UPDATE_INVOICE = gql`
+    mutation UpdateInvoice($invoice: InvoiceDetailInput!) {
+        updateInvoice(invoice: $invoice)
+    }
+`;
+
+export const DELETE_ITEM = gql`
+    mutation DeleteItem($item_id: Int!) {
+        deleteItem(item_id: $item_id)
     }
 `
 
@@ -85,10 +98,68 @@ export const getInvoiceById = createAsyncThunk(
     }
 );
 
+export const updateInvoice = createAsyncThunk(
+    'invoice/updateInvoice',
+    async (invoice: any, { rejectWithValue }) => {
+        try {
+            const response = await fetch('http://localhost:5000/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: UPDATE_INVOICE.loc?.source.body,
+                    variables: { invoice },
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.errors) {
+                throw new Error(data.errors[0].message);
+            }
+
+            return data.data.updateInvoice;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
+export const deleteItem = createAsyncThunk(
+    'invoice/deleteItem',
+    async (theItemID: number, { rejectWithValue }) => {
+        try {
+            const response = await fetch('http://localhost:5000/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: DELETE_ITEM.loc?.source.body,
+                    variables: { item_id: theItemID },
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.errors) {
+                throw new Error(data.errors[0].message);
+            }
+
+            return data.data.updateInvoice;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred deleting the item';
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
 // Redux Slice
 const invoiceSlice = createSlice({
     name: "invoice",
-    initialState: { invoices: [], selectedInvoice: null, loading: false, error: "" },
+    initialState: { invoices: [], selectedInvoice: null, selectedUpdateInvoice: [], deletingItem: null, loading: false, error: "" },
     reducers: {},
     extraReducers: (builder) => {
         builder
@@ -109,6 +180,27 @@ const invoiceSlice = createSlice({
             .addCase(getInvoiceById.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message || "Something went wrong";
+            });
+
+        builder
+            .addCase(updateInvoice.fulfilled, (state, action) => {
+                state.loading = false;
+                state.selectedUpdateInvoice = action.payload
+                // Optionally update state.selectedInvoice if needed
+            })
+            .addCase(updateInvoice.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message || "Update failed";
+            });
+
+        builder
+            .addCase(deleteItem.fulfilled, (state, action) => {
+                state.loading = false;
+                state.deletingItem = action.payload
+            })
+            .addCase(deleteItem.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message || "Delete failed";
             });
     },
 });

@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Box, Button, Container, TextField, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Typography } from '@mui/material';
 import { League_Spartan } from 'next/font/google';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -7,7 +7,11 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 
 import Image from 'next/image';
+import ConfirmationBox from './ConfirmationBox'
 
+import { useDispatch } from 'react-redux';
+import { updateInvoice, deleteItem, getInvoiceById } from '../../redux/invoiceSlice';
+import { AppDispatch } from '../../redux/store';
 
 
 const leagueSpartan = League_Spartan({
@@ -31,6 +35,7 @@ interface InvoiceDetail {
     InvoiceCreateDate: Date,
     InvoicePaymentDue: Date,
     InvoicePaymentTerms: number,
+    ClientID: number,
     ClientName: string,
     ClientAddress: string,
     ClientCity: string,
@@ -48,10 +53,179 @@ interface InvoiceDetail {
 
 interface InvoiceInfoDetailProps {
     theInvoiceDetail: InvoiceDetail | null,
-    onClose: Function
+    onClose: Function,
+    refetchInvoice: Function
 }
 
-export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDetailProps) {
+export default function EditModal({ theInvoiceDetail, onClose, refetchInvoice }: InvoiceInfoDetailProps) {
+
+
+    const [isOpen, setIsOpen] = useState(false)
+    const [selectedItemDelete, setSelectedItemDelete] = useState<number | null>(null)
+    const [itemsList, setItemsList] = useState<Items[]>(theInvoiceDetail?.Items || [])
+    const [isFieldsEmpty, setIsFieldEmpty] = useState<boolean>(false)
+    const [itemNameErrors, setItemNameErrors] = useState<boolean[]>([])
+
+    //For the forms
+    const [clientInfo, setClientInfo] = useState({
+        ClientID: theInvoiceDetail?.ClientID || 0,
+        ClientName: theInvoiceDetail?.ClientName || '',
+        ClientEmail: theInvoiceDetail?.ClientEmail || '',
+        ClientAddress: theInvoiceDetail?.ClientAddress || '',
+        ClientCity: theInvoiceDetail?.ClientCity || '',
+        ClientPostalCode: theInvoiceDetail?.ClientPostalCode || '',
+        ClientCountry: theInvoiceDetail?.ClientCountry || ''
+    });
+
+    const [invoiceInfo, setInvoiceInfo] = useState({
+        InvoiceDescription: theInvoiceDetail?.InvoiceDescription,
+        InvoiceCreateDate: theInvoiceDetail?.InvoiceCreateDate || null,
+        InvoicePaymentDue: theInvoiceDetail?.InvoicePaymentDue,
+        InvoicePaymentTerms: theInvoiceDetail?.InvoicePaymentTerms || 0,
+        InvoiceTotal: theInvoiceDetail?.InvoiceTotal,
+        StatusName: theInvoiceDetail?.StatusName,
+    })
+
+    const dispatch = useDispatch<AppDispatch>();
+
+    useEffect(() => {
+        const allValid = itemsList.some(item =>
+            item.ItemName.trim() === '' ||
+            item.ItemQuantity <= 0 ||
+            item.ItemPrice <= 0
+        )
+        setIsFieldEmpty(allValid)
+    }, [itemsList])
+
+    useEffect(() => {
+        setItemNameErrors(new Array(itemsList.length).fill(false))
+    }, [itemsList.length])
+
+    const handleConfirmBox = (itemID: number) => {
+
+        setSelectedItemDelete(itemID)
+
+        //Used the itemID instead of the 'selectedItemDelete' because it wont assign the new value until after function finishes.
+        if (itemID === -1 || itemID === null) {
+            alert('The item is not in the database yet')
+        }
+        else {
+            setIsOpen(true)
+        }
+
+    }
+
+    //Made a try-catch and async to wait for deletion to be done, then refetches the Invoice. Safer this way
+    const handleDelete = async () => {
+        try {
+            if (selectedItemDelete !== null) {
+                await dispatch(deleteItem(selectedItemDelete))
+                alert('item deleted! Item number is: ' + selectedItemDelete)
+
+                const updatedItems = itemsList.filter(it => it.ItemID !== selectedItemDelete);
+                //Calculates the new total of the item list
+                const newInvoiceTotal = updatedItems.reduce((sum, item) => sum + item.ItemTotal, 0);
+
+                //This sets the itemList again by re-rendering the list and filter out the deleted one, which now shows the updated list
+                setItemsList(updatedItems)
+
+                //The reason why there is ({...}) is because its returning an object, not a function
+                setInvoiceInfo(previousInfo => ({
+                    ...previousInfo,
+                    InvoiceTotal: newInvoiceTotal
+                }))
+
+
+                //This updates the invoice page with updated information
+                const updatedInvoice = {
+                    ...theInvoiceDetail,
+                    ...clientInfo,
+                    ...invoiceInfo,
+                    Items: updatedItems,
+                    InvoiceTotal: newInvoiceTotal
+                }
+
+                //Calls dispatch to update invoice 
+                await dispatch(updateInvoice(updatedInvoice))
+
+                //This one refetches the updated info to show new information
+                await refetchInvoice()
+
+
+                closeConfirmBox()
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert('Delete failed – please try again');
+        }
+
+    }
+
+    const closeConfirmBox = () => {
+        setIsOpen(false)
+    }
+
+    const applyChanges = () => {
+
+        //Recalculates the specific invoice total
+        const newInvoiceTotal = itemsList.reduce((sum, item) => sum + item.ItemTotal, 0);
+
+        //This will add the updated Items object in the theInvoiceDetail object before apllying the changes
+        const updatedInvoice = {
+            ...theInvoiceDetail,
+            ...clientInfo,
+            ...invoiceInfo,
+            InvoiceTotal: newInvoiceTotal,
+            Items: itemsList
+        }
+
+        dispatch(updateInvoice(updatedInvoice))
+        onClose() //Closes the EditModal
+        alert("Changes has been applied")
+        refetchInvoice()
+    }
+
+    const handleItemChanges = (index: number, field: keyof Items, value: string | number) => {
+        const updatedItems = [...itemsList];
+        const currentItem = { ...updatedItems[index] };
+
+        (currentItem[field] as any) = value;
+
+        if (field === 'ItemQuantity' || field === 'ItemPrice') {
+
+            const isValidNumber = (value: any) => /^[0-9]*\.?[0-9]+$/.test(value);
+
+            const qty = field === 'ItemQuantity' && isValidNumber(value) ? Number(value) : currentItem.ItemQuantity
+            const price = field === 'ItemPrice' && isValidNumber(value) ? Number(value) : currentItem.ItemPrice
+            currentItem.ItemTotal = parseFloat((qty * price).toFixed(2));
+        }
+
+        //This checks if there are any digits in the ItemName field
+        if (field === 'ItemName') {
+            const theErrors = [...itemNameErrors]
+            theErrors[index] = /\d/.test(String(value));
+            setItemNameErrors(theErrors)
+        }
+
+
+        updatedItems[index] = currentItem;
+
+        setItemsList(updatedItems)
+    }
+
+
+    const addItem = () => {
+        const newItem: Items = {
+            ItemID: -1, // Temporary unique ID (replace with proper ID later if needed)
+            ItemName: '',
+            ItemPrice: 0,
+            ItemQuantity: 0,
+            ItemTotal: 0
+        };
+
+        setItemsList(prevItems => [...prevItems, newItem]);
+    }
 
     return (
         //This is the actual modal background
@@ -72,7 +246,7 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '16px', color: "#7C5DFA", fontWeight: '400', display: 'block' }}><b>Bill From</b></Typography>
                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block', mt: '20px' }}>Street Address</Typography>
                     <TextField
-                        defaultValue={theInvoiceDetail?.BillsFromAddress}
+                        value={theInvoiceDetail?.BillsFromAddress}
                         id="outlined-basic"
                         label={false}
                         variant="outlined"
@@ -81,11 +255,13 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         slotProps={{
                             input: {
                                 style: {
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontFamily: leagueSpartan.style.fontFamily
                                 }
                             }
                         }}
                         sx={{ mt: '5px' }}
+                        disabled={true}
                     />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: '20px' }}>
                         <Box>
@@ -100,10 +276,12 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
+                                disabled={true}
 
                             />
                         </Box>
@@ -119,10 +297,12 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
+                                disabled={true}
                             />
                         </Box>
                         <Box>
@@ -137,10 +317,12 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
+                                disabled={true}
                             />
                         </Box>
                     </Box>
@@ -151,7 +333,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '16px', color: "#7C5DFA", fontWeight: '400', display: 'block', mt: '50px' }}><b>Bill To</b></Typography>
                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block', mt: '20px' }}>Client's Name</Typography>
                     <TextField
-                        defaultValue={theInvoiceDetail?.ClientName}
+                        value={clientInfo.ClientName}
+                        onChange={(e) => setClientInfo({ ...clientInfo, ClientName: e.target.value })}
                         id="outlined-basic"
                         label={false}
                         variant="outlined"
@@ -160,7 +343,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         slotProps={{
                             input: {
                                 style: {
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontFamily: leagueSpartan.style.fontFamily
                                 }
                             }
                         }}
@@ -169,7 +353,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
 
                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block', mt: '20px' }}>Client's Email</Typography>
                     <TextField
-                        defaultValue={theInvoiceDetail?.ClientEmail}
+                        value={clientInfo.ClientEmail}
+                        onChange={(e) => setClientInfo({ ...clientInfo, ClientEmail: e.target.value })}
                         id="outlined-basic"
                         label={false}
                         variant="outlined"
@@ -178,7 +363,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         slotProps={{
                             input: {
                                 style: {
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontFamily: leagueSpartan.style.fontFamily
                                 }
                             }
                         }}
@@ -187,7 +373,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
 
                     <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block', mt: '20px' }}>Street Address</Typography>
                     <TextField
-                        defaultValue={theInvoiceDetail?.ClientAddress}
+                        value={clientInfo.ClientAddress}
+                        onChange={(e) => setClientInfo({ ...clientInfo, ClientAddress: e.target.value })}
                         id="outlined-basic"
                         label={false}
                         variant="outlined"
@@ -196,7 +383,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         slotProps={{
                             input: {
                                 style: {
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontFamily: leagueSpartan.style.fontFamily
                                 }
                             }
                         }}
@@ -207,7 +395,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         <Box>
                             <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block' }}>City</Typography>
                             <TextField
-                                defaultValue={theInvoiceDetail?.ClientCity}
+                                value={clientInfo.ClientCity}
+                                onChange={(e) => setClientInfo({ ...clientInfo, ClientCity: e.target.value })}
                                 sx={{ width: '180px', mt: '5px' }}
                                 id="outlined-basic"
                                 label={false}
@@ -216,7 +405,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
@@ -226,7 +416,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         <Box>
                             <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block' }}>Post Code</Typography>
                             <TextField
-                                defaultValue={theInvoiceDetail?.ClientPostalCode}
+                                value={clientInfo.ClientPostalCode}
+                                onChange={(e) => setClientInfo({ ...clientInfo, ClientPostalCode: e.target.value })}
                                 sx={{ width: '180px', mt: '5px' }}
                                 id="outlined-basic"
                                 label={false}
@@ -235,7 +426,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
@@ -244,7 +436,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         <Box>
                             <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block' }}>Country</Typography>
                             <TextField
-                                defaultValue={theInvoiceDetail?.ClientCountry}
+                                value={clientInfo.ClientCountry}
+                                onChange={(e) => setClientInfo({ ...clientInfo, ClientCountry: e.target.value })}
                                 sx={{ width: '180px', mt: '5px' }}
                                 id="outlined-basic"
                                 label={false}
@@ -253,7 +446,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
@@ -274,7 +468,11 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                             <LocalizationProvider dateAdapter={AdapterDayjs}>
                                 <DatePicker
                                     label={false}
-                                    defaultValue={dayjs(theInvoiceDetail?.InvoiceCreateDate)}
+                                    value={invoiceInfo.InvoiceCreateDate ? dayjs(invoiceInfo?.InvoiceCreateDate) : null}
+                                    //Set the time to 12 to avoid UTC shifts if using the Date type
+                                    onChange={(newValue) => setInvoiceInfo({ ...invoiceInfo, InvoiceCreateDate: newValue ? new Date(newValue.year(), newValue.month(), newValue.date(), 12) : null })}
+
+
                                 />
                             </LocalizationProvider>
                         </Box>
@@ -282,7 +480,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         <Box>
                             <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block' }}>Payment Terms</Typography>
                             <TextField
-                                defaultValue={theInvoiceDetail?.InvoicePaymentTerms}
+                                value={invoiceInfo.InvoicePaymentTerms}
+                                onChange={(e) => setInvoiceInfo({ ...invoiceInfo, InvoicePaymentTerms: Number(e.target.value) })}
                                 sx={{ mt: '5px', width: '290px' }}
                                 id="outlined-basic"
                                 label={false}
@@ -291,7 +490,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                 slotProps={{
                                     input: {
                                         style: {
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            fontFamily: leagueSpartan.style.fontFamily
                                         }
                                     }
                                 }}
@@ -303,7 +503,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                     <Box>
                         <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'block', mt: '20px' }}>Project Description</Typography>
                         <TextField
-                            defaultValue={theInvoiceDetail?.InvoiceDescription}
+                            value={invoiceInfo.InvoiceDescription}
+                            onChange={(e) => setInvoiceInfo({ ...invoiceInfo, InvoiceDescription: e.target.value })}
                             id="outlined-basic"
                             label={false}
                             variant="outlined"
@@ -312,7 +513,8 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                             slotProps={{
                                 input: {
                                     style: {
-                                        fontWeight: 'bold'
+                                        fontWeight: 'bold',
+                                        fontFamily: leagueSpartan.style.fontFamily
                                     }
                                 }
                             }}
@@ -331,11 +533,15 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'inline-block', ml: '40px' }}>Price</Typography>
                         <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '14px', color: "#7E88C3", fontWeight: '400', display: 'inline-block', ml: '90px' }}>Total</Typography>
                     </Box>
-                    {theInvoiceDetail?.Items ?
-                        theInvoiceDetail.Items.map((item, index) => {
+
+
+
+                    {itemsList ?
+                        itemsList.map((item, index) => {
                             return (
                                 <Box key={index}>
                                     <TextField
+                                        type='text'
                                         defaultValue={item.ItemName}
                                         sx={{ width: '276px', mt: '5px' }}
                                         id="outlined-basic"
@@ -345,14 +551,21 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                         slotProps={{
                                             input: {
                                                 style: {
-                                                    fontWeight: 'bold'
+                                                    fontWeight: 'bold',
+                                                    fontFamily: leagueSpartan.style.fontFamily
                                                 }
                                             }
                                         }}
+                                        onChange={(e) => handleItemChanges(index, 'ItemName', e.target.value)}
+                                        helperText={itemNameErrors[index] ? "Numbers not allowed" : ""}
+                                        error={itemNameErrors[index]}
+
+
                                     />
 
                                     <TextField
                                         defaultValue={item.ItemQuantity}
+                                        type='number'
                                         sx={{ width: '46px', mt: '5px', ml: '20px' }}
                                         id="outlined-basic"
                                         label={false}
@@ -361,14 +574,16 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                         slotProps={{
                                             input: {
                                                 style: {
-                                                    fontWeight: 'bold'
+                                                    fontWeight: 'bold',
+                                                    fontFamily: leagueSpartan.style.fontFamily
                                                 }
                                             }
                                         }}
+                                        onChange={(e) => handleItemChanges(index, 'ItemQuantity', Number(e.target.value))}
                                     />
 
                                     <TextField
-                                        defaultValue={item.ItemPrice}
+                                        defaultValue={parseFloat(Number(item.ItemPrice).toFixed(2))}
                                         sx={{ width: '100px', mt: '5px', ml: '20px' }}
                                         id="outlined-basic"
                                         label={false}
@@ -377,14 +592,17 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                         slotProps={{
                                             input: {
                                                 style: {
-                                                    fontWeight: 'bold'
+                                                    fontWeight: 'bold',
+                                                    fontFamily: leagueSpartan.style.fontFamily
                                                 }
                                             }
                                         }}
+                                        onChange={(e) => handleItemChanges(index, 'ItemPrice', Number(e.target.value))}
+                                        type={'number'}
                                     />
 
                                     <TextField
-                                        defaultValue={item.ItemTotal}
+                                        value={parseFloat(Number(item.ItemTotal).toFixed(2))}
                                         sx={{ width: '80px', mt: '5px', ml: '20px' }}
                                         id="outlined-basic"
                                         label={false}
@@ -394,13 +612,14 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                                         slotProps={{
                                             input: {
                                                 style: {
-                                                    fontWeight: 'bold'
+                                                    fontWeight: 'bold',
+                                                    fontFamily: leagueSpartan.style.fontFamily
                                                 }
                                             }
                                         }}
                                     />
 
-                                    <Box sx={{ display: 'inline-block', margin: '15px 0px 0px 20px', cursor: 'pointer' }}>
+                                    <Box onClick={() => handleConfirmBox(item.ItemID)} sx={{ display: 'inline-block', margin: '15px 0px 0px 20px', cursor: 'pointer' }}>
                                         <Image alt="Arrow" src="/images/icon-delete.svg" width={12} height={16} />
                                     </Box>
                                 </Box>
@@ -410,17 +629,56 @@ export default function EditModal({ theInvoiceDetail, onClose }: InvoiceInfoDeta
                         null
                     }
 
-                    <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '13px', color: "#7E88C3", fontWeight: '400', display: 'block', width: '100%', mt: '10px' }}>
+                    <Button onClick={addItem} sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '13px', color: "#7E88C3", fontWeight: '400', display: 'block', width: '100%', mt: '10px' }}>
                         <b>+ Add New Item</b>
                     </Button>
                 </Box>
 
                 {/* This is the Buttons From section */}
-                <Box>
-                    <Button onClick={() => onClose()}>Close</Button>
-                    <Button>Save Changes</Button>
+                <Box sx={{ textAlign: 'right', mt: '15px' }}>
+                    <Button
+                        onClick={() => onClose()}
+                        sx={{
+                            fontFamily: leagueSpartan.style.fontFamily,
+                            fontSize: '12px',
+                            color: "#7E88C3",
+                            fontWeight: '600',
+                            background: '#F9FAFE',
+                            padding: '10px 20px',
+                            borderRadius: '15px',
+                            textTransform: 'capitalize',
+                            marginRight: '15px',
+                            letterSpacing: '1px'
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isFieldsEmpty}
+                        onClick={() => applyChanges()}
+                        sx={{
+                            fontFamily: leagueSpartan.style.fontFamily,
+                            fontSize: '12px',
+                            color: "white",
+                            fontWeight: '500',
+                            background: '#7C5DFA',
+                            padding: '10px 20px',
+                            borderRadius: '15px',
+                            textTransform: 'capitalize',
+                            letterSpacing: '1px'
+                        }}
+                    >
+                        Save Changes
+                    </Button>
                 </Box>
             </Box>
+
+            {isOpen ?
+                <Box>
+                    <ConfirmationBox selectedItemDelete={selectedItemDelete} isOpen={isOpen} onCancel={closeConfirmBox} onConfirm={handleDelete} />
+                </Box>
+                : null
+            }
         </Box>
     )
 }

@@ -35,6 +35,7 @@ interface InvoiceDetail {
     InvoiceCreateDate: Date,
     InvoicePaymentDue: Date,
     InvoicePaymentTerms: number,
+    ClientID: number,
     ClientName: string,
     ClientAddress: string,
     ClientCity: string,
@@ -67,7 +68,7 @@ export default function InvoiceInfo() {
     const [editInvoice, setEditInvoice] = useState<boolean>(false)
 
 
-    //This useEffect calls the dispatch with the provided ID to get the information of the Invoice
+    //This useEffect calls the dispatch with the provided ID to get the information of the Invoice initially
     useEffect(() => {
         if (theInvoiceID) {
             dispatch(getInvoiceById(theInvoiceID));
@@ -85,7 +86,12 @@ export default function InvoiceInfo() {
         }
     }, [selectedInvoice])
 
-
+    const refetchInvoice = () => {
+        if (theInvoiceID) {
+            dispatch(getInvoiceById(theInvoiceID));
+            console.log("Changes happened!")
+        }
+    }
 
     return (
         <Box sx={{ height: '100vh', overflowY: 'scroll' }}>
@@ -146,7 +152,7 @@ export default function InvoiceInfo() {
                     <InvoiceInfoDetails theInvoiceDetail={invoiceDetail} />
                 </Box>
                 {
-                    editInvoice && <EditModal theInvoiceDetail={invoiceDetail} onClose={() => setEditInvoice(!editInvoice)} />
+                    editInvoice && <EditModal theInvoiceDetail={invoiceDetail} onClose={() => setEditInvoice(!editInvoice)} refetchInvoice={refetchInvoice} />
                 }
             </Container >
         </Box >

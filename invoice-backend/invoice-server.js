@@ -88,8 +88,43 @@ const schema = buildSchema(`
         getHomeInvoices: [HomeInvoice]
         getInvoiceById(id: Int!): Invoice
     }
-`);
 
+    input ItemsInput {
+        ItemID: Int,
+        ItemName: String,
+        ItemPrice: Float,
+        ItemQuantity: Int,
+        ItemTotal: Float
+    }
+
+    input InvoiceDetailInput {
+        InvoiceID: Int,
+        InvoiceDescription: String,
+        InvoiceCreateDate: Date,
+        InvoicePaymentDue: Date,
+        InvoicePaymentTerms: Int,
+        ClientID: Int,
+        ClientName: String,
+        ClientAddress: String,
+        ClientCity: String,
+        ClientPostalCode: String,
+        ClientCountry: String,
+        ClientEmail: String,
+        BillsFromAddress: String,
+        BillsFromCity: String,
+        BillsFromPostalCode: String,
+        BillsFromCountry: String,
+        InvoiceTotal: Float,
+        StatusName: String,
+        Items: [ItemsInput]
+    }
+
+    type Mutation {
+        updateInvoice(invoice: InvoiceDetailInput!): String
+        deleteItem(item_id: Int!) : String
+    }
+`);
+``
 
 const root = {
     Date: DateScalar, // Register custom Date scalar
@@ -220,6 +255,166 @@ const root = {
         } catch (err) {
             console.error('SQL error', err);
             throw new Error('Error retrieving data from database');
+        }
+    },
+
+    deleteItem: async ({ item_id }) => {
+        const pool = await sql.connect(config);
+
+        //This will help for rolling back everything if therre is an error
+        const transaction = new sql.Transaction(pool);
+
+        try {
+
+            await transaction.begin();
+
+            const ordersRequest = new sql.Request(transaction);
+
+            await ordersRequest
+                .input('ItemID', sql.Int, item_id)
+
+                .query(`
+                    DELETE FROM Orders
+                    WHERE item_id = @ItemID
+                `)
+
+            const itemRequest = new sql.Request(transaction);
+
+            await itemRequest
+                .input('ItemID', sql.Int, item_id)
+
+                .query(`
+                    DELETE FROM Items
+                    WHERE item_id = @ItemID;
+                `)
+
+            await transaction.commit();
+            console.log('Item deleted successfully.');
+
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Failed to delete item:', error);
+            throw new Error('Failed to delete item.');
+        }
+    },
+
+    updateInvoice: async ({ invoice }) => {
+
+        const pool = await sql.connect(config);
+
+        //This will help for rolling back everything if therre is an error
+        const transaction = new sql.Transaction(pool);
+
+        try {
+
+            await transaction.begin();
+
+            const clientRequest = new sql.Request(transaction);
+
+            await clientRequest
+                .input('ClientID', sql.Int, invoice.ClientID)
+                .input('ClientName', sql.VarChar, invoice.ClientName)
+                .input('ClientAddress', sql.VarChar, invoice.ClientAddress)
+                .input('ClientCity', sql.VarChar, invoice.ClientCity)
+                .input('ClientPostalCode', sql.VarChar, invoice.ClientPostalCode)
+                .input('ClientCountry', sql.VarChar, invoice.ClientCountry)
+                .input('ClientEmail', sql.VarChar, invoice.ClientEmail)
+
+                .query(`
+                    UPDATE Client SET
+                    client_name = @ClientName,
+                    client_email = @ClientEmail,
+                    client_address = @ClientAddress,
+                    client_city = @ClientCity,
+                    client_postal_code = @ClientPostalCode,
+                    client_country = @ClientCountry
+                    WHERE client_id = @ClientID
+                `)
+
+            const request = new sql.Request(transaction);
+
+            //Update the invoice
+            await request
+                .input('InvoiceID', sql.Int, invoice.InvoiceID)
+                .input('InvoiceCreateDate', sql.DateTime, invoice.InvoiceCreateDate)
+                .input('InvoicePaymentDue', sql.DateTime, invoice.InvoicePaymentDue)
+                .input('InvoiceDescription', sql.NVarChar, invoice.InvoiceDescription)
+                .input('InvoicePaymentTerms', sql.Int, invoice.InvoicePaymentTerms)
+                .input('BillsFromAddress', sql.VarChar, invoice.BillsFromAddress)
+                .input('BillsFromCity', sql.VarChar, invoice.BillsFromCity)
+                .input('BillsFromPostalCode', sql.VarChar, invoice.BillsFromPostalCode)
+                .input('BillsFromCountry', sql.VarChar, invoice.BillsFromCountry)
+                .input('InvoiceTotal', sql.Float, invoice.InvoiceTotal)
+
+                .query(`
+                    UPDATE Invoice SET
+                    invoice_create_date = @InvoiceCreateDate,
+                    invoice_payment_due = @InvoicePaymentDue,
+                    invoice_description = @InvoiceDescription,
+                    invoice_payment_terms = @InvoicePaymentTerms,
+                    invoice_total = @InvoiceTotal
+                    WHERE invoice_id = @InvoiceID
+                `);
+
+
+            for (const item of invoice.Items) {
+
+                const itemReq = new sql.Request(transaction)
+
+                if (item.ItemID > 0) {
+                    await itemReq
+                        .input('ItemID', sql.Int, item.ItemID)
+                        .input('ItemName', sql.VarChar, item.ItemName)
+                        .input('ItemPrice', sql.Real, item.ItemPrice)
+                        .input('ItemQuantity', sql.Int, item.ItemQuantity)
+                        .input('ItemTotal', sql.Real, item.ItemTotal)
+
+                        .query(
+                            `
+                                UPDATE Items SET
+                                    item_quantity = @ItemQuantity,
+                                    item_name = @ItemName,
+                                    item_price = @ItemPrice,
+                                    item_total = @ItemTotal
+                                WHERE item_id = @ItemID
+                            `
+                        )
+                }
+                else {
+                    const itemResult = await itemReq
+                        .input('ItemName', sql.VarChar, item.ItemName)
+                        .input('ItemPrice', sql.Real, item.ItemPrice)
+                        .input('ItemQuantity', sql.Int, item.ItemQuantity)
+                        .input('ItemTotal', sql.Real, item.ItemTotal)
+
+                        .query(
+                            `
+                                INSERT INTO Items (item_name, item_price, item_quantity, item_total)
+                                OUTPUT INSERTED.item_id
+                                VALUES (@ItemName, @ItemPrice, @ItemQuantity, @ItemTotal)
+                            `
+                        )
+
+                    const itemId = itemResult.recordset[0].item_id;
+
+                    await new sql.Request(transaction)
+                        .input('InvoiceID', sql.Int, invoice.InvoiceID)
+                        .input('ItemID', sql.Int, itemId)
+                        .query(`
+                                INSERT INTO Orders (invoice_id, item_id)
+                                VALUES (@InvoiceID, @ItemID)
+                            `)
+                }
+            }
+
+            await transaction.commit();
+            console.log('Transaction committed successfully.');
+
+
+        } catch (err) {
+            await transaction.rollback();
+            console.error('SQL error', err);
+            throw new Error('Error updating invoice');
         }
     }
 };
