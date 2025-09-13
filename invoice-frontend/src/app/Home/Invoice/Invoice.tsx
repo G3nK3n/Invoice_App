@@ -70,6 +70,8 @@ const checkStatusFontColor = (statusName: string) => {
     return fontColor;
 }
 
+
+
 export default function Home({ homeInvoice }: HomeInvoiceProps) {
 
     const router = useRouter();

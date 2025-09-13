@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
 import Image from 'next/image'
 import { League_Spartan } from 'next/font/google';
@@ -9,7 +9,7 @@ import { useQuery } from '@apollo/client';
 
 import Nothing from './Nothing/Nothing';
 import Invoice from './Invoice/Invoice';
-
+import AddNewInvoices from '../components/Modals/AddNewInvoice';
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchInvoices } from "../redux/invoiceSlice";
@@ -38,9 +38,11 @@ export default function Home() {
 
     const dispatch = useDispatch<AppDispatch>();
     const { invoices, loading, error } = useSelector((state: RootState) => state.invoices);
+    const [addNewInvoice, setAddNewInvoice] = useState<boolean>(false)
 
     useEffect(() => { dispatch(fetchInvoices()); }, [dispatch]);
 
+    console.log("THE FORM: ", invoices)
     return (
         <Box sx={{ height: '100vh', overflowY: 'scroll' }}>
             <Container maxWidth={'md'}>
@@ -56,7 +58,7 @@ export default function Home() {
                         </Typography>
                     </Box>
 
-                    <Button sx={{ display: 'flex', justifyContent: 'space-between', width: '150px', height: '48px', fontSize: '14px', fontFamily: leagueSpartan.style.fontFamily, textTransform: 'capitalize', backgroundColor: '#7C5DFA', color: 'white', padding: '15px 10px', borderRadius: '25px', marginTop: '15px' }}>
+                    <Button onClick={() => setAddNewInvoice(true)} sx={{ display: 'flex', justifyContent: 'space-between', width: '150px', height: '48px', fontSize: '14px', fontFamily: leagueSpartan.style.fontFamily, textTransform: 'capitalize', backgroundColor: '#7C5DFA', color: 'white', padding: '15px 10px', borderRadius: '25px', marginTop: '15px' }}>
                         <Box sx={{ width: '32px', height: '32px', backgroundColor: 'white', display: 'flex', justifyContent: 'center', paddingTop: '11px', borderRadius: '25px' }}>
                             <Image alt={'Logo'} src={'/images/icon-plus.svg'} width={10} height={10} />
                         </Box>
@@ -64,12 +66,12 @@ export default function Home() {
                     </Button>
                 </Box>
 
-                {invoices ?
+                {invoices && invoices.length > 0 ?
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px', mt: '50px' }}>
                         {invoices.map((invoice: HomeInvoice) => {
                             return (
                                 <Box key={invoice.InvoiceID}>
-                                    <Invoice homeInvoice={invoice} />
+                                    <Invoice homeInvoice={{ ...invoice }} />
                                 </Box>
 
                             )
@@ -81,7 +83,9 @@ export default function Home() {
                         <Nothing />
                     </Box>
                 }
-
+                {
+                    addNewInvoice && <AddNewInvoices onClose={() => setAddNewInvoice(!addNewInvoice)} />
+                }
 
             </Container>
 

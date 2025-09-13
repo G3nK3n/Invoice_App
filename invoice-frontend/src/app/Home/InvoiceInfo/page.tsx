@@ -8,7 +8,7 @@ import { League_Spartan } from 'next/font/google';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useDispatch, useSelector } from "react-redux";
-import { getInvoiceById } from "../../redux/invoiceSlice";
+import { fetchInvoices, getInvoiceById, markInvoiceAsPaid } from "../../redux/invoiceSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 
 import InvoiceInfoDetails from './InvoiceInfoDetails/InvoiceInfoDetails';
@@ -54,6 +54,37 @@ interface InvoiceDetail {
 export default function InvoiceInfo() {
 
 
+    const checkStatusBackgroundColor = (statusName: string | undefined) => {
+        let backgroundColor: string = "";
+
+        if (statusName === 'Paid') {
+            backgroundColor = 'rgba(51, 214, 159, 0.2)';
+        }
+        else if (statusName === 'Pending') {
+            backgroundColor = 'rgba(255, 143, 0, 0.2)';
+        }
+        else {
+            backgroundColor = 'rgba(55, 59, 83,0.2)';
+        }
+
+        return backgroundColor;
+    }
+
+    const checkStatusFontColor = (statusName: string | undefined) => {
+        let fontColor: string = "";
+
+        if (statusName === 'Paid') {
+            fontColor = '#33D69F'
+        }
+        else if (statusName === 'Pending') {
+            fontColor = '#FF8F00'
+        }
+        else {
+            fontColor = '#373B53'
+        }
+
+        return fontColor;
+    }
 
     const router = useRouter();
 
@@ -68,6 +99,7 @@ export default function InvoiceInfo() {
     const [editInvoice, setEditInvoice] = useState<boolean>(false)
 
 
+    //console.log("The invoice is: ", theInvoiceID)
     //This useEffect calls the dispatch with the provided ID to get the information of the Invoice initially
     useEffect(() => {
         if (theInvoiceID) {
@@ -89,7 +121,19 @@ export default function InvoiceInfo() {
     const refetchInvoice = () => {
         if (theInvoiceID) {
             dispatch(getInvoiceById(theInvoiceID));
+            //dispatch(fetchInvoices());
             console.log("Changes happened!")
+        }
+    }
+
+    const markAsPaid = () => {
+        if (invoiceDetail?.StatusName === 'Paid') {
+            alert("It is already marked as paid already!")
+        }
+        else {
+            dispatch(markInvoiceAsPaid(theInvoiceID))
+            alert('This invoice has been marked as Paid! Thank you!')
+            refetchInvoice();
         }
     }
 
@@ -127,10 +171,10 @@ export default function InvoiceInfo() {
                                 Status
                             </Typography>
                             <Box sx={{ display: 'inline-block', marginLeft: '25px', textAlign: 'center' }}>
-                                <Box sx={{ backgroundColor: 'lightgreen', backdropFilter: 'blur(10px)', display: 'inline-block', width: '106px', padding: '10px', borderRadius: '7px' }}>
-                                    <Box sx={{ display: 'inline-block', backgroundColor: 'green', borderRadius: '50%', width: '8px', height: '8px', marginRight: '12px' }} />
-                                    <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: 'green', fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
-                                        <b>Test</b>
+                                <Box sx={{ backgroundColor: checkStatusBackgroundColor(invoiceDetail?.StatusName), backdropFilter: 'blur(10px)', display: 'inline-block', width: '106px', padding: '10px', borderRadius: '7px' }}>
+                                    <Box sx={{ display: 'inline-block', backgroundColor: checkStatusFontColor(invoiceDetail?.StatusName), borderRadius: '50%', width: '8px', height: '8px', marginRight: '12px' }} />
+                                    <Typography sx={{ fontFamily: leagueSpartan.style.fontFamily, fontSize: '18px', color: checkStatusFontColor(invoiceDetail?.StatusName), fontWeight: '400', display: 'inline-flex', alignItems: 'center' }}>
+                                        <b>{invoiceDetail?.StatusName}</b>
                                     </Typography>
                                 </Box>
                             </Box>
@@ -142,7 +186,7 @@ export default function InvoiceInfo() {
                             <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#EC5757', color: 'white', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '95px', marginRight: '15px' }}>
                                 Delete
                             </Button>
-                            <Button sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#7C5DFA', color: 'white', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '145px', marginRight: '15px' }} >
+                            <Button onClick={() => markAsPaid()} sx={{ fontFamily: leagueSpartan.style.fontFamily, background: '#7C5DFA', color: 'white', padding: '10px', fontSize: '16px', textTransform: 'capitalize', borderRadius: '20px', width: '145px', marginRight: '15px' }} >
                                 Mark as Paid
                             </Button>
                         </Box>

@@ -109,7 +109,7 @@ const formattedDate = (payementDueDate: Date) => {
 export default function InvoiceInfoDetails({ theInvoiceDetail }: InvoiceInfoDetailProps) {
 
 
-
+    //console.log("The invoice detail is: ", theInvoiceDetail)
 
     return (
         <Box sx={{ background: 'white', mt: '15px', padding: '40px' }}>
